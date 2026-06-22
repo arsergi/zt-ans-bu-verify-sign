@@ -129,9 +129,11 @@ The output indicates that the signature validation was successful.
 * You made changes to the `MANIFEST.in` file to include new files in the project.
 * You signed the new files in the project using `ansible-sign`, and automation controller was now able to verify the new files and their signatures.
 
-== Conclusion
+== Next Steps
 
-This concludes this lab. We hope it was able to demonstrate the advantages and changes to Ansible Automation Platform with the introduction of project signing.
+This concludes the project signing section of the lab. In the next modules, you will learn how to sign and verify *Ansible collections* using Private Automation Hub — a different but complementary signing workflow where the hub signs content server-side rather than locally with `ansible-sign`.
+
+Press the **Next** button below to continue.
 
 == Troubleshooting
 

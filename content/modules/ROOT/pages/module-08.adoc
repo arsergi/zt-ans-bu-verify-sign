@@ -1,0 +1,150 @@
+= Lab Guide: Install and Verify Signed Collections
+
+_A guide to installing signed collections with GPG signature verification and detecting content tampering._
+
+---
+
+[discrete]
+====
+*Estimated time to complete: 15 minutes*
+====
+
+In the previous module, you signed and approved collections in Private Automation Hub. In this final module, you will install those signed collections and learn how to verify their signatures on the client side using `ansible-galaxy`.
+
+This module uses a *different GPG key* than the one you created in Module 2. In Module 2, you created a personal key to sign projects locally with `ansible-sign`. Here, you will use the *hub's signing service public key* to verify collections that were signed server-side by PAH.
+
+---
+
+== Task 1: Import the Hub's Public Key into a Keyring
+
+The hub's signing service public key was exported to your home directory during setup. Import it into a dedicated GPG keyring:
+
+[source,bash]
+----
+gpg --import --no-default-keyring --keyring ~/keyring.kbx ~/galaxy_signing_service.asc
+----
+
+This creates a keyring file at `~/keyring.kbx` containing the hub's public key. The `ansible-galaxy` CLI will use this keyring to verify collection signatures.
+
+You can verify the key was imported:
+
+[source,bash]
+----
+gpg --no-default-keyring --keyring ~/keyring.kbx --list-keys
+----
+
+---
+
+== Task 2: Install a Collection Without Signature Verification
+
+First, install `ansible.test_collection` *without* specifying a keyring to see what happens:
+
+[source,bash]
+----
+cd ~
+ansible-galaxy collection install ansible.test_collection -c
+----
+
+Notice the warning in the output:
+
+[source,text]
+----
+[WARNING]: The GnuPG keyring used for collection signature verification was not configured...
+----
+
+The collection installs successfully, but signature verification is skipped entirely. Without the `--keyring` option, `ansible-galaxy` cannot verify that the collection is authentic and untampered.
+
+---
+
+== Task 3: Install a Collection With Signature Verification
+
+Now install `community.lab_collection` with signature verification enabled:
+
+[source,bash]
+----
+ansible-galaxy collection install community.lab_collection --keyring ~/keyring.kbx -c -vvvv
+----
+
+In the verbose output, look for:
+
+[source,text]
+----
+GnuPG signature verification succeeded for community.lab_collection
+----
+
+This confirms that `ansible-galaxy` downloaded the collection, fetched its signature from the hub, and verified it against the public key in your keyring. The collection's integrity is cryptographically guaranteed.
+
+---
+
+== Task 4: Examine the Signature Metadata
+
+After installation, `ansible-galaxy` stores signature metadata alongside the collection. Inspect it:
+
+[source,bash]
+----
+cat ~/.ansible/collections/ansible_collections/community/lab_collection-1.0.0.info/GALAXY.yml
+----
+
+This file contains the collection version metadata including the signatures that were applied by the hub's signing service.
+
+---
+
+== Task 5: Tamper With the Installed Collection
+
+To demonstrate integrity verification, add an unexpected file to the installed collection:
+
+[source,bash]
+----
+touch ~/.ansible/collections/ansible_collections/community/lab_collection/docs/README.md
+----
+
+This simulates a scenario where someone (or something) has modified a collection after it was installed -- for example, a compromised dependency or an accidental edit.
+
+---
+
+== Task 6: Verify Collection Integrity
+
+Now run `ansible-galaxy collection verify` to compare the local installation against the remote manifest:
+
+[source,bash]
+----
+ansible-galaxy collection verify community.lab_collection --keyring ~/keyring.kbx -c
+----
+
+The output will report the tampered file:
+
+[source,text]
+----
+Collection community.lab_collection contains modified content in the following files:
+    docs/README.md
+        Expected: the file does not exist
+        Found: the file exists
+----
+
+The verification process:
+
+1. Checks the GPG signature on the remote manifest to confirm it was signed by a trusted key.
+2. Compares the local files against the remote checksums.
+3. Reports any differences -- added, modified, or removed files.
+
+---
+
+== Summary
+
+* You imported the hub's signing service public key into a local GPG keyring.
+* You installed a collection *without* verification and observed the warning about missing keyring configuration.
+* You installed a collection *with* verification and confirmed the signature was valid.
+* You tampered with an installed collection and used `ansible-galaxy collection verify` to detect the modification.
+
+== Conclusion
+
+This lab has covered both sides of Ansible content signing in Ansible Automation Platform:
+
+* **Project signing** (Modules 2-5): You used `ansible-sign` to sign Ansible projects locally with your own GPG key. Automation controller validated those signatures when syncing projects from source control.
+* **Collection signing** (Modules 6-8): You published collections to Private Automation Hub, which signed them server-side using its own signing service. You then verified those signatures on the client side using `ansible-galaxy` with a GPG keyring.
+
+Together, these mechanisms provide end-to-end content integrity for Ansible automation -- from the projects that define your automation workflows to the reusable collections they depend on.
+
+== Troubleshooting
+
+If you have encountered an issue or have noticed something not quite right, please link:https://github.com/ansible/workshops/issues/new[open an issue].

@@ -19,6 +19,15 @@ antora:
     - name: module-05
       label: "Include the new files in signing manifest and re-sign and verify the project"
       solveButton: false
+    - name: module-06
+      label: "Publish Ansible collections to Private Automation Hub"
+      solveButton: false
+    - name: module-07
+      label: "Sign and approve collections in Private Automation Hub"
+      solveButton: false
+    - name: module-08
+      label: "Install and verify signed collections with GPG verification"
+      solveButton: false
 
 tabs:
 
