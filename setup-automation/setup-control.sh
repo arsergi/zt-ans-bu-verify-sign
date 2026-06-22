@@ -10,6 +10,13 @@ systemctl disable systemd-tmpfiles-setup.service
 # ansible-galaxy collection install microsoft.ad
 dnf install python3 python3-pip -y
 pip3 install ansible-sign
+# Ensure ansible-sign is on PATH for the rhel user's shell
+if ! command -v ansible-sign &>/dev/null; then
+  SIGN_BIN=$(find /usr/local/bin /root/.local/bin /usr/bin -name ansible-sign 2>/dev/null | head -1)
+  if [ -n "$SIGN_BIN" ] && [ "$SIGN_BIN" != "/usr/bin/ansible-sign" ]; then
+    ln -sf "$SIGN_BIN" /usr/bin/ansible-sign
+  fi
+fi
 # # ## setup rhel user
 touch /etc/sudoers.d/rhel_sudoers
 echo "%rhel ALL=(ALL:ALL) NOPASSWD:ALL" > /etc/sudoers.d/rhel_sudoers
