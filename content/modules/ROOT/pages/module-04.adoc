@@ -101,7 +101,7 @@ Go to the `Automation-Controller` tab and log in using the credentials below. On
 ====
 .Automation Controller Credentials
 * **Username:** `admin`
-* **Password:** `ansible1s23!`
+* **Password:** `ansible123!`
 ====
 
 The project sync should fail because the new files in the project were not signed.
