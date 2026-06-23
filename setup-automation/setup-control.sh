@@ -13,34 +13,12 @@ systemctl disable systemd-tmpfiles-setup.service
 # ansible-galaxy collection install microsoft.ad
 
 echo "[1/6] Making ansible-sign available..." >> $SETUP_LOG
-# ansible-sign is pre-installed inside the AAP 2.5 container image but its
-# shebang references python3.11 which doesn't exist on the host (has 3.9).
-# Copy the binary out, fix the shebang to use the system python3.
-SIGN_BIN=$(find /home/rhel/aap/containers/storage -name ansible-sign -type f 2>/dev/null | head -1)
-if [ -z "$SIGN_BIN" ]; then
-  SIGN_BIN=$(find / -path "*/containers/storage/*" -name ansible-sign -type f 2>/dev/null | head -1)
-fi
-echo "  ansible-sign found at: ${SIGN_BIN:-NOT FOUND}" >> $SETUP_LOG
-
-if [ -n "$SIGN_BIN" ]; then
-  cp "$SIGN_BIN" /usr/bin/ansible-sign
-  # Fix shebang to use the system python3
-  sed -i '1s|^#!.*python.*|#!/usr/bin/python3|' /usr/bin/ansible-sign
-  chmod +x /usr/bin/ansible-sign
-  echo "  copied to /usr/bin/ansible-sign, shebang fixed to $(head -1 /usr/bin/ansible-sign)" >> $SETUP_LOG
-
-  # Also need the ansible_sign python package — find it in the container overlay
-  SIGN_PKG=$(find /home/rhel/aap/containers/storage -type d -name "ansible_sign" 2>/dev/null | grep "site-packages/ansible_sign$" | head -1)
-  if [ -n "$SIGN_PKG" ]; then
-    SITE_PACKAGES=$(python3 -c "import site; print(site.getsitepackages()[0])")
-    cp -r "$SIGN_PKG" "$SITE_PACKAGES/"
-    echo "  ansible_sign package copied from $SIGN_PKG to $SITE_PACKAGES/" >> $SETUP_LOG
-  else
-    echo "  WARN: ansible_sign python package not found in container overlay" >> $SETUP_LOG
-  fi
-else
-  echo "  ERROR: ansible-sign not found in container overlay" >> $SETUP_LOG
-fi
+# Bootstrap pip using Python's built-in ensurepip (no dnf repos needed),
+# then install ansible-sign from PyPI.
+python3 -m ensurepip --upgrade >> $SETUP_LOG 2>&1
+echo "  ensurepip exit code: $?" >> $SETUP_LOG
+python3 -m pip install ansible-sign >> $SETUP_LOG 2>&1
+echo "  pip install ansible-sign exit code: $?" >> $SETUP_LOG
 
 # Verify it works as rhel user
 RHEL_CHECK=$(su - rhel -c "ansible-sign --version 2>&1")
