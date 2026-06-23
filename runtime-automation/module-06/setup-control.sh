@@ -136,6 +136,8 @@ readme: README.md
 authors:
   - Lab Student <student@localhost>
 description: A test collection for signing demonstration
+license:
+  - GPL-3.0-or-later
 repository: https://git.example.com/ansible/test_collection
 tags:
   - tools
@@ -150,6 +152,8 @@ readme: README.md
 authors:
   - Lab Student <student@localhost>
 description: A lab collection for signing demonstration
+license:
+  - GPL-3.0-or-later
 repository: https://git.example.com/community/lab_collection
 tags:
   - tools
