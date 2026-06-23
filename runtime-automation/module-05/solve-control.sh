@@ -9,9 +9,7 @@ SOLVE
 echo "  exit code: $?" >> $LOG
 
 echo "[2/3] Re-signing project..." >> $LOG
-su - rhel <<'SOLVE' >> $LOG 2>&1
-ansible-sign project gpg-sign ~/ansible-sign-demo
-SOLVE
+su - rhel -c "/usr/local/bin/ansible-sign project gpg-sign ~/ansible-sign-demo" >> $LOG 2>&1
 echo "  exit code: $?" >> $LOG
 echo "  completed: $(date)" >> $LOG
 

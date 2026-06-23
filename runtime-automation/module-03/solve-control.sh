@@ -19,9 +19,7 @@ echo "  exit code: $?" >> $LOG
 
 # --- Step 2: Sign the project ---
 echo "[2/5] Signing project with ansible-sign..." >> $LOG
-su - rhel <<'STEP2' >> $LOG 2>&1
-ansible-sign project gpg-sign ~/ansible-sign-demo
-STEP2
+su - rhel -c "/usr/local/bin/ansible-sign project gpg-sign ~/ansible-sign-demo" >> $LOG 2>&1
 echo "  exit code: $?" >> $LOG
 echo "  completed: $(date)" >> $LOG
 
