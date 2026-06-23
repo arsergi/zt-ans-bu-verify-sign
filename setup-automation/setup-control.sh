@@ -47,9 +47,9 @@ sudo chown rhel:rhel /home/rhel/ansible-sign-demo
 echo "  ansible-sign-demo: done" >> $SETUP_LOG
 
 echo "[6/6] Final checks..." >> $SETUP_LOG
-echo "  ansible-sign path: $(which ansible-sign 2>&1)" >> $SETUP_LOG
-echo "  ansible-sign version: $(ansible-sign --version 2>&1)" >> $SETUP_LOG
-echo "  python3 version: $(python3 --version 2>&1)" >> $SETUP_LOG
+echo "  ansible-sign (rhel): $(su - rhel -c 'which ansible-sign 2>&1')" >> $SETUP_LOG
+echo "  version (rhel): $(su - rhel -c 'ansible-sign --version 2>&1')" >> $SETUP_LOG
+echo "  python3: $(python3 --version 2>&1)" >> $SETUP_LOG
 
 chown rhel:rhel $SETUP_LOG
 echo "=== Setup finished: $(date) ===" >> $SETUP_LOG

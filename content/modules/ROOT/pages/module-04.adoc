@@ -82,7 +82,7 @@ Commit the changes:
 git commit -m "Adding new files in the project"
 ----
 
-Finally, push the new files to the Gitea SCM. This system has credentials cached, so you do not need to log in.
+Finally, push the new files to the Gitea SCM with the username: `gitea` and password: `gitea`.
 
 [source,bash]
 ----

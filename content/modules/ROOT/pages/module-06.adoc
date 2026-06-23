@@ -17,7 +17,7 @@ With collection signing, the hub itself signs content server-side when an admini
 
 == Task 1: Explore Private Automation Hub
 
-Private Automation Hub is accessible through the same AAP gateway you have been using. Go to the `aap` tab and log in if needed.
+Private Automation Hub is accessible through the same AAP gateway you have been using. Go to the `Automation-Controller` tab and log in if needed.
 
 [IMPORTANT]
 ====
