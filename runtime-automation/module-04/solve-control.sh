@@ -3,7 +3,7 @@ LOG="/tmp/solve-module-04.log"
 echo "=== Module 04 solve started: $(date) ===" > $LOG
 
 echo "[1/2] Creating playbook and inventory files..." >> $LOG
-sudo -iu rhel bash <<'SOLVE' >> $LOG 2>&1
+su - rhel <<'SOLVE' >> $LOG 2>&1
 cd ~/ansible-sign-demo
 
 mkdir -p playbooks
@@ -26,9 +26,8 @@ SOLVE
 echo "  exit code: $?" >> $LOG
 
 echo "[2/2] Git commit and push..." >> $LOG
-sudo -iu rhel bash <<'SOLVE' >> $LOG 2>&1
+su - rhel <<'SOLVE' >> $LOG 2>&1
 export GIT_TERMINAL_PROMPT=0
-git config --global credential.helper store
 cd ~/ansible-sign-demo
 git add playbooks/ inventory
 git commit -m "Adding new files in the project"

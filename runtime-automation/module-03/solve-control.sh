@@ -9,7 +9,7 @@ CURL_OPTS="-sk --connect-timeout 10 --max-time 30"
 
 # --- Step 1: Create MANIFEST.in ---
 echo "[1/5] Creating MANIFEST.in..." >> $LOG
-sudo -iu rhel bash <<'STEP1' >> $LOG 2>&1
+su - rhel <<'STEP1' >> $LOG 2>&1
 cat << EOF > ~/ansible-sign-demo/MANIFEST.in
 recursive-exclude .git *
 include README.md
@@ -19,7 +19,7 @@ echo "  exit code: $?" >> $LOG
 
 # --- Step 2: Sign the project ---
 echo "[2/5] Signing project with ansible-sign..." >> $LOG
-sudo -iu rhel bash <<'STEP2' >> $LOG 2>&1
+su - rhel <<'STEP2' >> $LOG 2>&1
 ansible-sign project gpg-sign ~/ansible-sign-demo
 STEP2
 echo "  exit code: $?" >> $LOG
@@ -27,9 +27,8 @@ echo "  completed: $(date)" >> $LOG
 
 # --- Step 3: Git add, commit, push ---
 echo "[3/5] Git commit and push..." >> $LOG
-sudo -iu rhel bash <<'STEP3' >> $LOG 2>&1
+su - rhel <<'STEP3' >> $LOG 2>&1
 export GIT_TERMINAL_PROMPT=0
-git config --global credential.helper store
 cd ~/ansible-sign-demo
 git add .ansible-sign/ MANIFEST.in
 git commit -m "Adding signatures for empty project"
@@ -38,7 +37,7 @@ STEP3
 echo "  exit code: $?" >> $LOG
 echo "  completed: $(date)" >> $LOG
 
-# --- Step 4: Look up org ID (needed for credential and project) ---
+# --- Step 4: Look up org ID, then create credential ---
 echo "[4/5] Creating GPG credential in AAP..." >> $LOG
 
 echo "  Looking up Default org..." >> $LOG
@@ -53,9 +52,9 @@ if [ -z "$GPG_KEY" ]; then
 fi
 
 echo "  Looking up GPG Public Key credential type..." >> $LOG
-CRED_TYPE_RESPONSE=$(curl $CURL_OPTS -u ${AAP_USER}:${AAP_PASS} \
-  "${AAP_URL}/api/controller/v2/credential_types/?name=GPG+Public+Key")
-CRED_TYPE_ID=$(echo "$CRED_TYPE_RESPONSE" | jq -r '.results[0].id')
+CRED_TYPE_ID=$(curl $CURL_OPTS -u ${AAP_USER}:${AAP_PASS} \
+  "${AAP_URL}/api/controller/v2/credential_types/?name=GPG+Public+Key" \
+  | jq -r '.results[0].id')
 echo "  credential type ID: ${CRED_TYPE_ID}" >> $LOG
 
 if [ "$CRED_TYPE_ID" = "null" ] || [ -z "$CRED_TYPE_ID" ]; then
