@@ -12,32 +12,28 @@ systemctl disable systemd-tmpfiles-setup.service
 # ansible-galaxy collection install ansible.windows
 # ansible-galaxy collection install microsoft.ad
 
-echo "[1/6] Installing python3 and pip..." >> $SETUP_LOG
-dnf install python3 python3-pip -y >> $SETUP_LOG 2>&1
-echo "  python3: $(python3 --version 2>&1)" >> $SETUP_LOG
-echo "  pip3: $(pip3 --version 2>&1)" >> $SETUP_LOG
-
-echo "[2/6] Installing ansible-sign..." >> $SETUP_LOG
-python3 -m pip install ansible-sign >> $SETUP_LOG 2>&1
-echo "  pip3 install exit code: $?" >> $SETUP_LOG
-
-# Find where pip put the binary and make sure it's in /usr/bin
-SIGN_BIN=$(find / -name ansible-sign -type f -executable 2>/dev/null | head -1)
-echo "  ansible-sign binary found at: ${SIGN_BIN:-NOT FOUND}" >> $SETUP_LOG
-echo "  root PATH: $PATH" >> $SETUP_LOG
-
-if [ -n "$SIGN_BIN" ]; then
-  ln -sf "$SIGN_BIN" /usr/bin/ansible-sign
-  echo "  symlinked to /usr/bin/ansible-sign" >> $SETUP_LOG
+echo "[1/6] Making ansible-sign available..." >> $SETUP_LOG
+# ansible-sign is pre-installed inside the AAP 2.5 container image.
+# Find it and symlink to /usr/bin so the rhel user can run it directly.
+if ! command -v ansible-sign &>/dev/null; then
+  SIGN_BIN=$(find /home/rhel/aap/containers/storage -name ansible-sign -type f -executable 2>/dev/null | head -1)
+  if [ -z "$SIGN_BIN" ]; then
+    SIGN_BIN=$(find / -name ansible-sign -type f -executable 2>/dev/null | head -1)
+  fi
+  echo "  ansible-sign found at: ${SIGN_BIN:-NOT FOUND}" >> $SETUP_LOG
+  if [ -n "$SIGN_BIN" ]; then
+    ln -sf "$SIGN_BIN" /usr/bin/ansible-sign
+    echo "  symlinked to /usr/bin/ansible-sign" >> $SETUP_LOG
+  else
+    echo "  ERROR: ansible-sign not found in container overlay or anywhere on disk" >> $SETUP_LOG
+  fi
 else
-  echo "  ERROR: ansible-sign binary not found anywhere on disk" >> $SETUP_LOG
+  echo "  ansible-sign already on PATH: $(which ansible-sign)" >> $SETUP_LOG
 fi
 
 # Verify it works as rhel user
-RHEL_CHECK=$(su - rhel -c "which ansible-sign 2>&1")
-echo "  rhel user 'which ansible-sign': $RHEL_CHECK" >> $SETUP_LOG
-RHEL_PATH=$(su - rhel -c "echo \$PATH")
-echo "  rhel user PATH: $RHEL_PATH" >> $SETUP_LOG
+RHEL_CHECK=$(su - rhel -c "ansible-sign --version 2>&1")
+echo "  rhel user ansible-sign: $RHEL_CHECK" >> $SETUP_LOG
 
 echo "[3/6] Setting up rhel user sudo and SSH..." >> $SETUP_LOG
 # # ## setup rhel user
@@ -62,9 +58,9 @@ sudo chown rhel:rhel /home/rhel/ansible-sign-demo
 echo "  ansible-sign-demo: done" >> $SETUP_LOG
 
 echo "[6/6] Final checks..." >> $SETUP_LOG
-echo "  /usr/bin/ansible-sign exists: $([ -f /usr/bin/ansible-sign ] && echo YES || echo NO)" >> $SETUP_LOG
-echo "  /usr/local/bin/ansible-sign exists: $([ -f /usr/local/bin/ansible-sign ] && echo YES || echo NO)" >> $SETUP_LOG
-echo "  /root/.local/bin/ansible-sign exists: $([ -f /root/.local/bin/ansible-sign ] && echo YES || echo NO)" >> $SETUP_LOG
+echo "  ansible-sign path: $(which ansible-sign 2>&1)" >> $SETUP_LOG
+echo "  ansible-sign version: $(ansible-sign --version 2>&1)" >> $SETUP_LOG
+echo "  python3 version: $(python3 --version 2>&1)" >> $SETUP_LOG
 
 chown rhel:rhel $SETUP_LOG
 echo "=== Setup finished: $(date) ===" >> $SETUP_LOG
