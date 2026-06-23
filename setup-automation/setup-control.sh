@@ -33,10 +33,10 @@ chown -R rhel:rhel /home/$USER/.ssh
 echo "  sudoers and SSH: done" >> $SETUP_LOG
 
 echo "[4/6] Configuring git credentials..." >> $SETUP_LOG
-git config credential.helper store
+su - rhel -c "git config --global credential.helper store"
 touch /home/rhel/.git-credentials
+chown rhel:rhel /home/rhel/.git-credentials
 su - rhel -c "echo 'http://gitea:gitea@gitea:3000' >> /home/rhel/.git-credentials"
-git push -u origin master
 su - rhel -c "git config --global user.name gitea"
 su - rhel -c "git config --global user.email student@localhost"
 echo "  git credentials: done" >> $SETUP_LOG

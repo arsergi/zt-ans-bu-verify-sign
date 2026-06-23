@@ -2,11 +2,9 @@
 LOG="/tmp/solve-module-04.log"
 echo "=== Module 04 solve started: $(date) ===" > $LOG
 
-sudo -u rhel bash -c : && RUNAS="sudo -u rhel"
-
 echo "[1/2] Creating playbook and inventory files..." >> $LOG
-$RUNAS bash <<'SOLVE'
-cd /home/rhel/ansible-sign-demo
+sudo -iu rhel bash <<'SOLVE' >> $LOG 2>&1
+cd ~/ansible-sign-demo
 
 mkdir -p playbooks
 
@@ -28,12 +26,13 @@ SOLVE
 echo "  exit code: $?" >> $LOG
 
 echo "[2/2] Git commit and push..." >> $LOG
-$RUNAS bash <<'SOLVE' 2>&1 | tee -a /tmp/solve-module-04.log
+sudo -iu rhel bash <<'SOLVE' >> $LOG 2>&1
 export GIT_TERMINAL_PROMPT=0
-cd /home/rhel/ansible-sign-demo
+git config --global credential.helper store
+cd ~/ansible-sign-demo
 git add playbooks/ inventory
 git commit -m "Adding new files in the project"
 git push
 SOLVE
-echo "  exit code: ${PIPESTATUS[0]}" >> $LOG
+echo "  exit code: $?" >> $LOG
 echo "=== Module 04 solve finished: $(date) ===" >> $LOG

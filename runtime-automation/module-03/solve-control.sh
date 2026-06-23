@@ -9,8 +9,8 @@ CURL_OPTS="-sk --connect-timeout 10 --max-time 30"
 
 # --- Step 1: Create MANIFEST.in ---
 echo "[1/5] Creating MANIFEST.in..." >> $LOG
-sudo -u rhel bash <<'STEP1'
-cat << EOF > /home/rhel/ansible-sign-demo/MANIFEST.in
+sudo -iu rhel bash <<'STEP1' >> $LOG 2>&1
+cat << EOF > ~/ansible-sign-demo/MANIFEST.in
 recursive-exclude .git *
 include README.md
 EOF
@@ -19,27 +19,33 @@ echo "  exit code: $?" >> $LOG
 
 # --- Step 2: Sign the project ---
 echo "[2/5] Signing project with ansible-sign..." >> $LOG
-sudo -u rhel bash <<'STEP2' 2>&1 | tee -a /tmp/solve-module-03.log
-cd /home/rhel
-ansible-sign project gpg-sign ansible-sign-demo
+sudo -iu rhel bash <<'STEP2' >> $LOG 2>&1
+ansible-sign project gpg-sign ~/ansible-sign-demo
 STEP2
-echo "  exit code: ${PIPESTATUS[0]}" >> $LOG
+echo "  exit code: $?" >> $LOG
 echo "  completed: $(date)" >> $LOG
 
 # --- Step 3: Git add, commit, push ---
 echo "[3/5] Git commit and push..." >> $LOG
-sudo -u rhel bash <<'STEP3' 2>&1 | tee -a /tmp/solve-module-03.log
+sudo -iu rhel bash <<'STEP3' >> $LOG 2>&1
 export GIT_TERMINAL_PROMPT=0
-cd /home/rhel/ansible-sign-demo
+git config --global credential.helper store
+cd ~/ansible-sign-demo
 git add .ansible-sign/ MANIFEST.in
 git commit -m "Adding signatures for empty project"
 git push
 STEP3
-echo "  exit code: ${PIPESTATUS[0]}" >> $LOG
+echo "  exit code: $?" >> $LOG
 echo "  completed: $(date)" >> $LOG
 
-# --- Step 4: Create GPG Public Key credential in AAP ---
+# --- Step 4: Look up org ID (needed for credential and project) ---
 echo "[4/5] Creating GPG credential in AAP..." >> $LOG
+
+echo "  Looking up Default org..." >> $LOG
+ORG_ID=$(curl $CURL_OPTS -u ${AAP_USER}:${AAP_PASS} \
+  "${AAP_URL}/api/controller/v2/organizations/?name=Default" \
+  | jq -r '.results[0].id')
+echo "  org ID: ${ORG_ID}" >> $LOG
 
 GPG_KEY=$(cat /home/rhel/signing_demo.asc)
 if [ -z "$GPG_KEY" ]; then
@@ -49,8 +55,6 @@ fi
 echo "  Looking up GPG Public Key credential type..." >> $LOG
 CRED_TYPE_RESPONSE=$(curl $CURL_OPTS -u ${AAP_USER}:${AAP_PASS} \
   "${AAP_URL}/api/controller/v2/credential_types/?name=GPG+Public+Key")
-echo "  credential_types response: $CRED_TYPE_RESPONSE" >> $LOG
-
 CRED_TYPE_ID=$(echo "$CRED_TYPE_RESPONSE" | jq -r '.results[0].id')
 echo "  credential type ID: ${CRED_TYPE_ID}" >> $LOG
 
@@ -63,10 +67,12 @@ fi
 CRED_PAYLOAD=$(jq -n \
   --arg name "ansible-sign" \
   --argjson cred_type "$CRED_TYPE_ID" \
+  --argjson org "$ORG_ID" \
   --arg gpg_key "$GPG_KEY" \
   '{
     name: $name,
     credential_type: $cred_type,
+    organization: $org,
     inputs: { gpg_public_key: $gpg_key }
   }')
 
@@ -88,12 +94,6 @@ fi
 
 # --- Step 5: Create project with signature validation credential ---
 echo "[5/5] Creating project in AAP..." >> $LOG
-
-echo "  Looking up Default org..." >> $LOG
-ORG_RESPONSE=$(curl $CURL_OPTS -u ${AAP_USER}:${AAP_PASS} \
-  "${AAP_URL}/api/controller/v2/organizations/?name=Default")
-ORG_ID=$(echo "$ORG_RESPONSE" | jq -r '.results[0].id')
-echo "  org ID: ${ORG_ID}" >> $LOG
 
 PROJECT_PAYLOAD=$(jq -n \
   --arg name "Signed Project" \
