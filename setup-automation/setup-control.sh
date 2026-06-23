@@ -18,7 +18,7 @@ echo "  python3: $(python3 --version 2>&1)" >> $SETUP_LOG
 echo "  pip3: $(pip3 --version 2>&1)" >> $SETUP_LOG
 
 echo "[2/6] Installing ansible-sign..." >> $SETUP_LOG
-pip3 install ansible-sign >> $SETUP_LOG 2>&1
+python3 -m pip install ansible-sign >> $SETUP_LOG 2>&1
 echo "  pip3 install exit code: $?" >> $SETUP_LOG
 
 # Find where pip put the binary and make sure it's in /usr/bin

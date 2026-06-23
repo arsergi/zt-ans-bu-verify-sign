@@ -31,9 +31,9 @@ antora:
 
 tabs:
 
-  - name: ">_ control"
+  - name: "Terminal"
     url: /wetty
-  - name: aap
+  - name: Automation-Controller
     url: https://control-${guid}.${domain}/
     external: false
   - name: Gitea
