@@ -26,7 +26,7 @@ Private Automation Hub is accessible through the same AAP gateway you have been 
 * **Password:** `ansible123!`
 ====
 
-Navigate to **Automation Content** -> **Namespaces** from the left-hand menu. You should see two pre-created namespaces:
+Navigate to **Automation Content** -> **Namespaces** from the left-hand menu. You should see two pre-created namespaces among others:
 
 * **`ansible`** -- for the `ansible.test_collection` collection
 * **`community`** -- for the `community.lab_collection` collection

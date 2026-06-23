@@ -136,6 +136,7 @@ readme: README.md
 authors:
   - Lab Student <student@localhost>
 description: A test collection for signing demonstration
+repository: https://git.example.com/ansible/test_collection
 tags:
   - tools
 GALEOF
@@ -149,6 +150,7 @@ readme: README.md
 authors:
   - Lab Student <student@localhost>
 description: A lab collection for signing demonstration
+repository: https://git.example.com/community/lab_collection
 tags:
   - tools
 GALEOF
