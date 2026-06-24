@@ -11,13 +11,13 @@ _A guide to signing and approving staged collections using Private Automation Hu
 
 In the previous module, you published two collections to Private Automation Hub. They are currently sitting in the *staging* repository, waiting for an administrator to review, sign, and approve them. In this module, you will sign and approve the collections, moving them to the *published* repository where they can be installed by users.
 
-When you approve a collection in PAH, the hub's signing service automatically applies a GPG signature. This is different from the project signing you did earlier -- here, the hub signs the content server-side using its own GPG key, not the key you created in Module 2.
+When you approve a collection in Private Automation Hub, the hub's signing service automatically applies a GPG signature. This is different from the project signing you did earlier -- here, the hub signs the content server-side using its own GPG key, not the key you created in Module 2.
 
 ---
 
 == Task 1: Navigate to the Approval Dashboard
 
-Go to the `aap` tab and log in if needed.
+Go to the `Automation-Controller` tab and log in if needed.
 
 [IMPORTANT]
 ====
@@ -26,7 +26,7 @@ Go to the `aap` tab and log in if needed.
 * **Password:** `ansible123!`
 ====
 
-Navigate to **Automation Content** -> **Collections** -> **Approval**. You should see both collections you published in the previous module:
+Navigate to **Automation Content** -> **Collection Approvals**. You should see both collections you published in the previous module:
 
 * `ansible.test_collection` version `1.0.0`
 * `community.lab_collection` version `1.0.0`
@@ -35,7 +35,7 @@ Navigate to **Automation Content** -> **Collections** -> **Approval**. You shoul
 
 == Task 2: Sign and Approve the First Collection
 
-Click the **Sign and approve** button next to `ansible.test_collection`. This triggers two actions:
+Click the **Thumbs Up** button next to `ansible.test_collection`. This triggers two actions:
 
 1. The hub's signing service creates a GPG signature for the collection using the server-side signing key.
 2. The collection moves from the staging repository to the published repository.
@@ -46,7 +46,7 @@ After approval, the collection disappears from the approval dashboard.
 
 == Task 3: Sign and Approve the Second Collection
 
-Click the **Sign and approve** button next to `community.lab_collection` to sign and approve it as well.
+Click the **Thumbs Up** button next to `community.lab_collection` to sign and approve it as well.
 
 Both collections are now in the published repository and available for installation.
 
@@ -54,7 +54,7 @@ Both collections are now in the published repository and available for installat
 
 == Task 4: Verify Collections Are Published and Signed
 
-Navigate to **Automation Content** -> **Collections**. You should see both collections listed. Look for the **Signed** indicator, which confirms that the hub's signing service has applied a cryptographic signature.
+Navigate to **Automation Content** -> **Collections**. You should be able to search for both collections (**test_collection** and **lab_collection**) and see them listed. Look for the **Signed** indicator, which confirms that the hub's signing service has applied a cryptographic signature.
 
 ---
 
