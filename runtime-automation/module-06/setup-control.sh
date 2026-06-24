@@ -142,6 +142,7 @@ repository: https://git.example.com/ansible/test_collection
 tags:
   - tools
 GALEOF
+echo "Initial release" > ${COLLECTIONS_DIR}/ansible/test_collection/CHANGELOG.md
 mkdir -p ${COLLECTIONS_DIR}/ansible/test_collection/meta
 cat > ${COLLECTIONS_DIR}/ansible/test_collection/meta/runtime.yml <<RTEOF
 ---
@@ -163,6 +164,7 @@ repository: https://git.example.com/community/lab_collection
 tags:
   - tools
 GALEOF
+echo "Initial release" > ${COLLECTIONS_DIR}/community/lab_collection/CHANGELOG.md
 mkdir -p ${COLLECTIONS_DIR}/community/lab_collection/meta
 cat > ${COLLECTIONS_DIR}/community/lab_collection/meta/runtime.yml <<RTEOF
 ---
