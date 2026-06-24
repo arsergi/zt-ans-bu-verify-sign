@@ -78,11 +78,8 @@ SIGNEOF
     su - rhel -c "podman exec ${WORKER} chmod +x /var/lib/pulp/scripts/collection_sign.sh"
   done
 
-  # Register the signing service with Pulp (container-internal path)
-  curl -sk -u ${PAH_USER}:${PAH_PASS} \
-    -H "Content-Type: application/json" \
-    -X POST ${PAH_URL}/api/galaxy/pulp/api/v3/signing-services/ \
-    -d "{\"name\":\"ansible-default\",\"script\":\"/var/lib/pulp/scripts/collection_sign.sh\",\"pubkey_fingerprint\":\"${KEY_FP}\"}"
+  # Register via pulpcore-manager (validates script + key, more reliable than REST API)
+  su - rhel -c "podman exec automation-hub-worker-1 bash -c 'GNUPGHOME=${CONTAINER_GNUPGHOME} pulpcore-manager add-signing-service ansible-default /var/lib/pulp/scripts/collection_sign.sh ${KEY_FP}'"
 
   echo "Signing service registered" >> /tmp/progress.log
 else
@@ -90,42 +87,24 @@ else
 fi
 
 # --- Configure Galaxy NG to auto-sign collections on approval ---
+# Settings are on the container overlay (not a persistent volume), so they
+# must be applied to running containers without restart. The entrypoint
+# regenerates settings.py on container start, so restarts wipe our changes.
 
 cat > /tmp/galaxy_signing_settings.py <<'SETTINGSEOF'
 GALAXY_COLLECTION_SIGNING_SERVICE = "ansible-default"
 GALAXY_AUTO_SIGN_COLLECTIONS = True
-GALAXY_REQUIRE_CONTENT_APPROVAL = True
 SETTINGSEOF
 
-SETTINGS_CHANGED=false
 for CONTAINER in automation-hub-api automation-hub-worker-1 automation-hub-worker-2; do
   if su - rhel -c "podman exec ${CONTAINER} grep -q GALAXY_COLLECTION_SIGNING_SERVICE /etc/pulp/settings.py 2>/dev/null"; then
     continue
   fi
   su - rhel -c "podman cp /tmp/galaxy_signing_settings.py ${CONTAINER}:/tmp/galaxy_signing_settings.py"
-  su - rhel -c "podman exec ${CONTAINER} bash -c 'cat /tmp/galaxy_signing_settings.py >> /etc/pulp/settings.py'"
-  SETTINGS_CHANGED=true
+  su - rhel -c "podman exec -u 0 ${CONTAINER} bash -c 'cat /tmp/galaxy_signing_settings.py >> /etc/pulp/settings.py'"
 done
 
-if [ "$SETTINGS_CHANGED" = "true" ]; then
-  echo "Galaxy NG signing settings configured, restarting hub containers..." >> /tmp/progress.log
-  for CONTAINER in automation-hub-api automation-hub-content automation-hub-web automation-hub-worker-1 automation-hub-worker-2; do
-    su - rhel -c "podman restart ${CONTAINER}"
-  done
-
-  # Wait for PAH API to come back up after restart
-  for i in $(seq 1 30); do
-    HTTP_CODE=$(curl -sk -o /dev/null -w "%{http_code}" -u ${PAH_USER}:${PAH_PASS} \
-      ${PAH_URL}/api/galaxy/v3/namespaces/)
-    if [ "$HTTP_CODE" = "200" ]; then
-      echo "PAH API ready after restart (attempt ${i})" >> /tmp/progress.log
-      break
-    fi
-    sleep 10
-  done
-else
-  echo "Galaxy NG signing settings already present" >> /tmp/progress.log
-fi
+echo "Galaxy NG signing settings applied" >> /tmp/progress.log
 
 # --- Export the signing service public key ---
 
