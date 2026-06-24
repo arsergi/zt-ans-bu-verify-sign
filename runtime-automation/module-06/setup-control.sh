@@ -30,18 +30,15 @@ CONTAINER_GNUPGHOME="/var/lib/pulp/.gnupg"
 if [ -z "$SIGNING_SVC" ]; then
   echo "No signing service found, configuring one inside hub containers..." >> /tmp/progress.log
 
-  # GPG batch config for key generation
+  # GPG batch config — 2048-bit RSA (no subkey) to avoid entropy starvation in containers
   cat > /tmp/pah_gpg.txt <<'GPGEOF'
 %echo Generating PAH Signing Service key
 Key-Type: RSA
-Key-Length: 4096
-Subkey-Type: RSA
-Subkey-Length: 4096
+Key-Length: 2048
 Name-Real: PAH Signing Service
 Name-Comment: collection signing
 Name-Email: pah-signing@localhost
 Expire-Date: 0
-%no-ask-passphrase
 %no-protection
 %commit
 %echo done
@@ -50,16 +47,16 @@ GPGEOF
   # Generate GPG key inside hub worker container using a shared GNUPGHOME
   # on the /var/lib/pulp volume so all workers can access it
   su - rhel -c "podman cp /tmp/pah_gpg.txt automation-hub-worker-1:/tmp/pah_gpg.txt"
-  su - rhel -c "podman exec automation-hub-worker-1 bash -c 'mkdir -p ${CONTAINER_GNUPGHOME} && chmod 700 ${CONTAINER_GNUPGHOME} && GNUPGHOME=${CONTAINER_GNUPGHOME} gpg --batch --gen-key /tmp/pah_gpg.txt'"
+  su - rhel -c "podman exec automation-hub-worker-1 bash -c 'mkdir -p ${CONTAINER_GNUPGHOME} && chmod 700 ${CONTAINER_GNUPGHOME} && GNUPGHOME=${CONTAINER_GNUPGHOME} gpg --no-tty --batch --gen-key /tmp/pah_gpg.txt'"
 
-  KEY_FP=$(su - rhel -c "podman exec automation-hub-worker-1 bash -c 'GNUPGHOME=${CONTAINER_GNUPGHOME} gpg --list-keys --with-colons \"PAH Signing Service\"'" | awk -F: '/^fpr:/{print $10; exit}')
+  KEY_FP=$(su - rhel -c "podman exec automation-hub-worker-1 bash -c 'GNUPGHOME=${CONTAINER_GNUPGHOME} gpg --no-tty --list-keys --with-colons \"PAH Signing Service\"'" | awk -F: '/^fpr:/{print $10; exit}')
   echo "GPG key generated inside container with fingerprint ${KEY_FP}" >> /tmp/progress.log
 
   # Replicate GPG key to worker-2 in case /var/lib/pulp is not a shared volume
-  su - rhel -c "podman exec automation-hub-worker-1 bash -c 'GNUPGHOME=${CONTAINER_GNUPGHOME} gpg --batch --yes --armor --export-secret-keys \"PAH Signing Service\"'" > /tmp/pah_signing_private.key
+  su - rhel -c "podman exec automation-hub-worker-1 bash -c 'GNUPGHOME=${CONTAINER_GNUPGHOME} gpg --no-tty --batch --yes --armor --export-secret-keys \"PAH Signing Service\"'" > /tmp/pah_signing_private.key
   su - rhel -c "podman exec automation-hub-worker-2 bash -c 'mkdir -p ${CONTAINER_GNUPGHOME} && chmod 700 ${CONTAINER_GNUPGHOME}'"
   su - rhel -c "podman cp /tmp/pah_signing_private.key automation-hub-worker-2:/tmp/pah_signing_private.key"
-  su - rhel -c "podman exec automation-hub-worker-2 bash -c 'GNUPGHOME=${CONTAINER_GNUPGHOME} gpg --batch --yes --import /tmp/pah_signing_private.key && rm -f /tmp/pah_signing_private.key'"
+  su - rhel -c "podman exec automation-hub-worker-2 bash -c 'GNUPGHOME=${CONTAINER_GNUPGHOME} gpg --no-tty --batch --yes --import /tmp/pah_signing_private.key && rm -f /tmp/pah_signing_private.key'"
   rm -f /tmp/pah_signing_private.key
 
   # Create the signing script with explicit GNUPGHOME so the worker
