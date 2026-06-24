@@ -91,7 +91,7 @@ ansible-galaxy collection publish community-lab_collection-1.0.0.tar.gz -c
 
 == Task 5: Verify Collections in the Approval Dashboard
 
-Go back to the `aap` tab and navigate to **Automation Content** -> **Collections** -> **Approval**. You should see both collections listed and waiting for approval:
+Go back to the `Automation-Controller` tab and navigate to **Automation Content** -> **Collection Approvals**. You should see both collections listed and waiting for approval:
 
 * `ansible.test_collection` version `1.0.0`
 * `community.lab_collection` version `1.0.0`
