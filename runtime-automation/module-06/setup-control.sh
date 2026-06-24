@@ -142,6 +142,11 @@ repository: https://git.example.com/ansible/test_collection
 tags:
   - tools
 GALEOF
+mkdir -p ${COLLECTIONS_DIR}/ansible/test_collection/meta
+cat > ${COLLECTIONS_DIR}/ansible/test_collection/meta/runtime.yml <<RTEOF
+---
+requires_ansible: ">=2.15.0"
+RTEOF
 
 ansible-galaxy collection init community.lab_collection --init-path ${COLLECTIONS_DIR}
 cat > ${COLLECTIONS_DIR}/community/lab_collection/galaxy.yml <<GALEOF
@@ -158,6 +163,11 @@ repository: https://git.example.com/community/lab_collection
 tags:
   - tools
 GALEOF
+mkdir -p ${COLLECTIONS_DIR}/community/lab_collection/meta
+cat > ${COLLECTIONS_DIR}/community/lab_collection/meta/runtime.yml <<RTEOF
+---
+requires_ansible: ">=2.15.0"
+RTEOF
 
 ansible-galaxy collection build ${COLLECTIONS_DIR}/ansible/test_collection --output-path /home/rhel/
 ansible-galaxy collection build ${COLLECTIONS_DIR}/community/lab_collection --output-path /home/rhel/
