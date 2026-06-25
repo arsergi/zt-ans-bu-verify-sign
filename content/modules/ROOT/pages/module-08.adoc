@@ -53,14 +53,7 @@ cd ~
 ansible-galaxy collection install ansible.test_collection -c
 ----
 
-You may see a warning in the output:
-
-[source,text]
-----
-[WARNING]: The GnuPG keyring used for collection signature verification was not configured...
-----
-
-The collection installs successfully, but signature verification is skipped entirely. Without the `--keyring` option, `ansible-galaxy` cannot verify that the collection is authentic and untampered.
+The collection installs successfully with no errors. However, without the `--keyring` option, `ansible-galaxy` skips signature verification entirely -- it has no way to confirm that the collection is authentic and untampered. The install succeeds, but you have no cryptographic guarantee about the content you just downloaded.
 
 ---
 
@@ -125,8 +118,6 @@ The output will report the tampered file:
 ----
 Collection community.lab_collection contains modified content in the following files:
     docs/README.md
-        Expected: the file does not exist
-        Found: the file exists
 ----
 
 The verification process:
@@ -140,7 +131,7 @@ The verification process:
 == Summary
 
 * You imported the hub's signing service public key into a local GPG keyring and set it as trusted.
-* You installed a collection *without* verification and observed the warning about missing keyring configuration.
+* You installed a collection *without* verification and saw that it succeeds silently -- with no integrity guarantee.
 * You installed a collection *with* verification and confirmed the signature was valid.
 * You tampered with an installed collection and used `ansible-galaxy collection verify` to detect the modification.
 
