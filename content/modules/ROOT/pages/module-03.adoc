@@ -35,6 +35,7 @@ Now, run the following command in the `Terminal` to sign the project:
 
 [source,bash]
 ----
+cd ~
 ansible-sign project gpg-sign ansible-sign-demo
 ----
 

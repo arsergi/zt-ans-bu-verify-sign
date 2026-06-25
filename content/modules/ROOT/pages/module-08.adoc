@@ -83,7 +83,7 @@ After installation, `ansible-galaxy` stores signature metadata alongside the col
 
 [source,bash]
 ----
-cat ~/.ansible/collections/ansible_collections/community/lab_collection-1.0.0.info/GALAXY.yml
+cat ~/.ansible/collections/ansible_collections/community.lab_collection-1.0.0.info/GALAXY.yml
 ----
 
 This file contains the collection version metadata including the signatures that were applied by the hub's signing service.
@@ -109,7 +109,7 @@ Now run `ansible-galaxy collection verify` to compare the local installation aga
 
 [source,bash]
 ----
-ansible-galaxy collection verify community.lab_collection --keyring ~/keyring.kbx -c
+ansible-galaxy collection verify community.lab_collection --keyring ~/keyring.kbx -c -s $(grep url ~/ansible.cfg | tail -1 | cut -d= -f2)
 ----
 
 The output will report the tampered file:
