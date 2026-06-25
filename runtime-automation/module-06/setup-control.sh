@@ -19,63 +19,6 @@ for i in $(seq 1 30); do
   sleep 10
 done
 
-# --- Remove synced repos (rh-certified, validated, community) ---
-# These ship pre-populated with unsigned collections that clutter the
-# Collections page and confuse students. The lab doesn't use them.
-
-wait_for_task() {
-  local TASK_URL="$1"
-  local LABEL="$2"
-  if [ -z "$TASK_URL" ] || [ "$TASK_URL" = "null" ]; then
-    return 0
-  fi
-  for i in $(seq 1 30); do
-    STATE=$(curl -sk -u ${PAH_USER}:${PAH_PASS} "${PAH_URL}${TASK_URL}" | jq -r '.state // empty')
-    if [ "$STATE" = "completed" ]; then
-      echo "  ${LABEL} task completed" >> /tmp/progress.log
-      return 0
-    elif [ "$STATE" = "failed" ]; then
-      echo "  WARNING: ${LABEL} task failed" >> /tmp/progress.log
-      return 1
-    fi
-    sleep 2
-  done
-  echo "  WARNING: ${LABEL} task timed out" >> /tmp/progress.log
-  return 1
-}
-
-for REPO_NAME in rh-certified validated community; do
-  echo "Removing synced repo: ${REPO_NAME}..." >> /tmp/progress.log
-
-  DIST_HREF=$(curl -sk -u ${PAH_USER}:${PAH_PASS} \
-    "${PAH_URL}/api/galaxy/pulp/api/v3/distributions/ansible/ansible/?name=${REPO_NAME}" \
-    | jq -r '.results[0].pulp_href // empty')
-  if [ -n "$DIST_HREF" ]; then
-    TASK=$(curl -sk -u ${PAH_USER}:${PAH_PASS} -X DELETE "${PAH_URL}${DIST_HREF}" | jq -r '.task // empty')
-    wait_for_task "$TASK" "delete-dist-${REPO_NAME}"
-  fi
-
-  REPO_HREF=$(curl -sk -u ${PAH_USER}:${PAH_PASS} \
-    "${PAH_URL}/api/galaxy/pulp/api/v3/repositories/ansible/ansible/?name=${REPO_NAME}" \
-    | jq -r '.results[0].pulp_href // empty')
-  if [ -n "$REPO_HREF" ]; then
-    TASK=$(curl -sk -u ${PAH_USER}:${PAH_PASS} -X DELETE "${PAH_URL}${REPO_HREF}" | jq -r '.task // empty')
-    wait_for_task "$TASK" "delete-repo-${REPO_NAME}"
-  fi
-
-  REMOTE_HREF=$(curl -sk -u ${PAH_USER}:${PAH_PASS} \
-    "${PAH_URL}/api/galaxy/pulp/api/v3/remotes/ansible/ansible/?name=${REPO_NAME}" \
-    | jq -r '.results[0].pulp_href // empty')
-  if [ -n "$REMOTE_HREF" ]; then
-    TASK=$(curl -sk -u ${PAH_USER}:${PAH_PASS} -X DELETE "${PAH_URL}${REMOTE_HREF}" | jq -r '.task // empty')
-    wait_for_task "$TASK" "delete-remote-${REPO_NAME}"
-  fi
-
-  echo "  ${REPO_NAME} removed" >> /tmp/progress.log
-done
-
-echo "Synced repos cleanup complete" >> /tmp/progress.log
-
 # --- Check if signing service already exists, configure if not ---
 
 SIGNING_SVC=$(curl -sk -u ${PAH_USER}:${PAH_PASS} \
@@ -191,6 +134,47 @@ SIGNING_SETTING=$(curl -sk -u ${PAH_USER}:${PAH_PASS} \
 echo "  GALAXY_COLLECTION_SIGNING_SERVICE=${SIGNING_SETTING}" >> /tmp/progress.log
 if [ "$SIGNING_SETTING" != "ansible-default" ]; then
   echo "  WARNING: Signing settings not loaded by API — hub UI won't show signing badges" >> /tmp/progress.log
+fi
+
+# --- Bulk-sign synced repos so pre-populated collections don't show "unsigned" ---
+
+SS_HREF=$(curl -sk -u ${PAH_USER}:${PAH_PASS} \
+  ${PAH_URL}/api/galaxy/pulp/api/v3/signing-services/?name=ansible-default \
+  | jq -r '.results[0].pulp_href // empty')
+
+if [ -n "$SS_HREF" ]; then
+  echo "Bulk-signing synced repos..." >> /tmp/progress.log
+  for REPO_NAME in rh-certified validated; do
+    REPO_HREF=$(curl -sk -u ${PAH_USER}:${PAH_PASS} \
+      "${PAH_URL}/api/galaxy/pulp/api/v3/repositories/ansible/ansible/?name=${REPO_NAME}" \
+      | jq -r '.results[0].pulp_href // empty')
+    if [ -z "$REPO_HREF" ]; then
+      echo "  ${REPO_NAME}: repo not found, skipping" >> /tmp/progress.log
+      continue
+    fi
+    SIGN_RESPONSE=$(curl -sk -u ${PAH_USER}:${PAH_PASS} \
+      -H "Content-Type: application/json" \
+      -X POST "${PAH_URL}${REPO_HREF}sign/" \
+      -d "{\"signing_service\": \"${SS_HREF}\", \"content_units\": [\"*\"]}")
+    SIGN_TASK=$(echo "$SIGN_RESPONSE" | jq -r '.task // empty')
+    if [ -n "$SIGN_TASK" ] && [ "$SIGN_TASK" != "null" ]; then
+      echo "  ${REPO_NAME}: sign task started (${SIGN_TASK})" >> /tmp/progress.log
+      for i in $(seq 1 60); do
+        STATE=$(curl -sk -u ${PAH_USER}:${PAH_PASS} "${PAH_URL}${SIGN_TASK}" | jq -r '.state // empty')
+        if [ "$STATE" = "completed" ]; then
+          echo "  ${REPO_NAME}: signed successfully" >> /tmp/progress.log
+          break
+        elif [ "$STATE" = "failed" ]; then
+          echo "  ${REPO_NAME}: sign task FAILED" >> /tmp/progress.log
+          break
+        fi
+        sleep 2
+      done
+    else
+      echo "  ${REPO_NAME}: no sign task returned — $(echo "$SIGN_RESPONSE" | jq -c '.')" >> /tmp/progress.log
+    fi
+  done
+  echo "Bulk-sign complete" >> /tmp/progress.log
 fi
 
 # --- Export the signing service public key ---
