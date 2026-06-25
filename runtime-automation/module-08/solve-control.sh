@@ -1,22 +1,30 @@
-#!/bin/sh
-echo "Solving module called module-08" >> /tmp/progress.log
-sudo -u rhel bash -c : && RUNAS="sudo -u rhel"
+#!/bin/bash
+LOG="/tmp/solve-module-08.log"
+echo "=== Module 08 solve started: $(date) ===" > $LOG
 
-$RUNAS bash <<'_'
-cd /home/rhel
+# --- Step 1: Import the hub's public key into a keyring ---
+echo "[1/5] Importing hub public key into keyring..." >> $LOG
+su - rhel -c "gpg --import --no-default-keyring --keyring ~/keyring.kbx ~/galaxy_signing_service.asc" >> $LOG 2>&1
+echo "  exit code: $?" >> $LOG
 
-# Import the hub's public key into a keyring
-gpg --import --no-default-keyring --keyring ~/keyring.kbx ~/galaxy_signing_service.asc
+# --- Step 2: Install collection without verification ---
+echo "[2/5] Installing ansible.test_collection (no verification)..." >> $LOG
+su - rhel -c "ansible-galaxy collection install ansible.test_collection -c -p ~/.ansible/collections/" >> $LOG 2>&1
+echo "  exit code: $?" >> $LOG
 
-# Install without verification
-ansible-galaxy collection install ansible.test_collection -c -p ~/.ansible/collections/
+# --- Step 3: Install collection with verification ---
+echo "[3/5] Installing community.lab_collection (with keyring verification)..." >> $LOG
+su - rhel -c "ansible-galaxy collection install community.lab_collection --keyring ~/keyring.kbx -c -p ~/.ansible/collections/ -vvvv" >> $LOG 2>&1
+echo "  exit code: $?" >> $LOG
 
-# Install with verification
-ansible-galaxy collection install community.lab_collection --keyring ~/keyring.kbx -c -p ~/.ansible/collections/ -vvvv
+# --- Step 4: Tamper with the collection ---
+echo "[4/5] Tampering with installed collection..." >> $LOG
+su - rhel -c "touch ~/.ansible/collections/ansible_collections/community/lab_collection/docs/README.md" >> $LOG 2>&1
+echo "  exit code: $?" >> $LOG
 
-# Tamper with the collection
-touch ~/.ansible/collections/ansible_collections/community/lab_collection/docs/README.md
+# --- Step 5: Verify (shows tampering) ---
+echo "[5/5] Verifying collection integrity (should report tampering)..." >> $LOG
+su - rhel -c "ansible-galaxy collection verify community.lab_collection --keyring ~/keyring.kbx -c" >> $LOG 2>&1 || true
+echo "  exit code: $?" >> $LOG
 
-# Verify (will show the tampering)
-ansible-galaxy collection verify community.lab_collection --keyring ~/keyring.kbx -c || true
-_
+echo "=== Module 08 solve finished: $(date) ===" >> $LOG

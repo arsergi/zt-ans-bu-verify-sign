@@ -147,7 +147,12 @@ echo "API token generated" >> /tmp/progress.log
 
 cat > /home/rhel/ansible.cfg <<CFGEOF
 [galaxy]
-server_list = published_repo
+server_list = automation_hub, published_repo
+
+[galaxy_server.automation_hub]
+url=${PAH_URL}/api/galaxy/
+token=${TOKEN}
+validate_certs=false
 
 [galaxy_server.published_repo]
 url=${PAH_URL}/api/galaxy/content/published/
