@@ -7,6 +7,12 @@ echo "[1/5] Importing hub public key into keyring..." >> $LOG
 su - rhel -c "gpg --import --no-default-keyring --keyring ~/keyring.kbx ~/galaxy_signing_service.asc" >> $LOG 2>&1
 echo "  exit code: $?" >> $LOG
 
+KEY_FP=$(su - rhel -c "gpg --no-default-keyring --keyring ~/keyring.kbx --with-colons --list-keys 2>/dev/null" | awk -F: '/^fpr:/{print $10; exit}')
+if [ -n "$KEY_FP" ]; then
+  su - rhel -c "echo '${KEY_FP}:6:' | gpg --no-default-keyring --keyring ~/keyring.kbx --import-ownertrust" >> $LOG 2>&1
+  echo "  trust set for ${KEY_FP}" >> $LOG
+fi
+
 # --- Step 2: Install collection without verification ---
 echo "[2/5] Installing ansible.test_collection (no verification)..." >> $LOG
 su - rhel -c "ansible-galaxy collection install ansible.test_collection -c -p ~/.ansible/collections/" >> $LOG 2>&1

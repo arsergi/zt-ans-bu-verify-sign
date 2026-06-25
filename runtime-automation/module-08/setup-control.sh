@@ -26,3 +26,17 @@ SETTINGSEOF
   sleep 5
   echo "  signing settings re-applied" >> /tmp/progress.log
 fi
+
+# --- Ensure public key file exists (re-export if missing/empty) ---
+if [ ! -s /home/rhel/galaxy_signing_service.asc ]; then
+  echo "Re-exporting signing service public key..." >> /tmp/progress.log
+  CONTAINER_GNUPGHOME="/var/lib/pulp/.gnupg"
+  EXPORT_FP=$(curl -sk -u admin:ansible123! \
+    https://localhost/api/galaxy/pulp/api/v3/signing-services/?name=ansible-default \
+    | jq -r '.results[0].pubkey_fingerprint // empty')
+  if [ -n "$EXPORT_FP" ]; then
+    su - rhel -c "podman exec automation-hub-worker-1 bash -c 'GNUPGHOME=${CONTAINER_GNUPGHOME} gpg --armor --export \"${EXPORT_FP}\"'" > /home/rhel/galaxy_signing_service.asc
+    chown rhel:rhel /home/rhel/galaxy_signing_service.asc
+    echo "  public key re-exported (fingerprint: ${EXPORT_FP})" >> /tmp/progress.log
+  fi
+fi

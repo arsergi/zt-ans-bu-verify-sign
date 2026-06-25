@@ -69,8 +69,14 @@ GPGEOF
 export GNUPGHOME=/var/lib/pulp/.gnupg
 FILE_PATH=$1
 SIGNATURE_PATH="${FILE_PATH}.asc"
-gpg --batch --yes --armor --detach-sign --output "${SIGNATURE_PATH}" "${FILE_PATH}"
-echo "{\"file\": \"${FILE_PATH}\", \"signature\": \"${SIGNATURE_PATH}\"}"
+ADMIN_ID="${PULP_SIGNING_KEY_FINGERPRINT}"
+gpg --batch --yes --armor --detach-sign --default-key "${ADMIN_ID}" --output "${SIGNATURE_PATH}" "${FILE_PATH}"
+STATUS=$?
+if [ $STATUS -eq 0 ]; then
+  echo "{\"file\": \"${FILE_PATH}\", \"signature\": \"${SIGNATURE_PATH}\"}"
+else
+  exit $STATUS
+fi
 SIGNEOF
   chmod +x /tmp/collection_sign.sh
 
@@ -179,13 +185,20 @@ fi
 
 # --- Export the signing service public key ---
 
-su - rhel -c "podman exec automation-hub-worker-1 bash -c 'GNUPGHOME=${CONTAINER_GNUPGHOME} gpg --armor --export \"PAH Signing Service\"'" > /home/rhel/galaxy_signing_service.asc
+EXPORT_FP=$(curl -sk -u ${PAH_USER}:${PAH_PASS} \
+  ${PAH_URL}/api/galaxy/pulp/api/v3/signing-services/?name=ansible-default \
+  | jq -r '.results[0].pubkey_fingerprint // empty')
+
+if [ -n "$EXPORT_FP" ]; then
+  su - rhel -c "podman exec automation-hub-worker-1 bash -c 'GNUPGHOME=${CONTAINER_GNUPGHOME} gpg --armor --export \"${EXPORT_FP}\"'" > /home/rhel/galaxy_signing_service.asc
+fi
+
 if [ ! -s /home/rhel/galaxy_signing_service.asc ]; then
-  EXISTING_FP=$(curl -sk -u ${PAH_USER}:${PAH_PASS} \
-    ${PAH_URL}/api/galaxy/pulp/api/v3/signing-services/ | jq -r '.results[0].pubkey_fingerprint // empty')
-  if [ -n "$EXISTING_FP" ]; then
-    su - rhel -c "podman exec automation-hub-worker-1 bash -c 'GNUPGHOME=${CONTAINER_GNUPGHOME} gpg --armor --export \"${EXISTING_FP}\"'" > /home/rhel/galaxy_signing_service.asc
-  fi
+  su - rhel -c "podman exec automation-hub-worker-1 bash -c 'GNUPGHOME=${CONTAINER_GNUPGHOME} gpg --armor --export \"PAH Signing Service\"'" > /home/rhel/galaxy_signing_service.asc
+fi
+
+if [ ! -s /home/rhel/galaxy_signing_service.asc ]; then
+  echo "ERROR: Failed to export signing service public key" >> /tmp/progress.log
 fi
 
 # --- Create namespaces ---
