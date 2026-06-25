@@ -19,6 +19,63 @@ for i in $(seq 1 30); do
   sleep 10
 done
 
+# --- Remove synced repos (rh-certified, validated, community) ---
+# These ship pre-populated with unsigned collections that clutter the
+# Collections page and confuse students. The lab doesn't use them.
+
+wait_for_task() {
+  local TASK_URL="$1"
+  local LABEL="$2"
+  if [ -z "$TASK_URL" ] || [ "$TASK_URL" = "null" ]; then
+    return 0
+  fi
+  for i in $(seq 1 30); do
+    STATE=$(curl -sk -u ${PAH_USER}:${PAH_PASS} "${PAH_URL}${TASK_URL}" | jq -r '.state // empty')
+    if [ "$STATE" = "completed" ]; then
+      echo "  ${LABEL} task completed" >> /tmp/progress.log
+      return 0
+    elif [ "$STATE" = "failed" ]; then
+      echo "  WARNING: ${LABEL} task failed" >> /tmp/progress.log
+      return 1
+    fi
+    sleep 2
+  done
+  echo "  WARNING: ${LABEL} task timed out" >> /tmp/progress.log
+  return 1
+}
+
+for REPO_NAME in rh-certified validated community; do
+  echo "Removing synced repo: ${REPO_NAME}..." >> /tmp/progress.log
+
+  DIST_HREF=$(curl -sk -u ${PAH_USER}:${PAH_PASS} \
+    "${PAH_URL}/api/galaxy/pulp/api/v3/distributions/ansible/ansible/?name=${REPO_NAME}" \
+    | jq -r '.results[0].pulp_href // empty')
+  if [ -n "$DIST_HREF" ]; then
+    TASK=$(curl -sk -u ${PAH_USER}:${PAH_PASS} -X DELETE "${PAH_URL}${DIST_HREF}" | jq -r '.task // empty')
+    wait_for_task "$TASK" "delete-dist-${REPO_NAME}"
+  fi
+
+  REPO_HREF=$(curl -sk -u ${PAH_USER}:${PAH_PASS} \
+    "${PAH_URL}/api/galaxy/pulp/api/v3/repositories/ansible/ansible/?name=${REPO_NAME}" \
+    | jq -r '.results[0].pulp_href // empty')
+  if [ -n "$REPO_HREF" ]; then
+    TASK=$(curl -sk -u ${PAH_USER}:${PAH_PASS} -X DELETE "${PAH_URL}${REPO_HREF}" | jq -r '.task // empty')
+    wait_for_task "$TASK" "delete-repo-${REPO_NAME}"
+  fi
+
+  REMOTE_HREF=$(curl -sk -u ${PAH_USER}:${PAH_PASS} \
+    "${PAH_URL}/api/galaxy/pulp/api/v3/remotes/ansible/ansible/?name=${REPO_NAME}" \
+    | jq -r '.results[0].pulp_href // empty')
+  if [ -n "$REMOTE_HREF" ]; then
+    TASK=$(curl -sk -u ${PAH_USER}:${PAH_PASS} -X DELETE "${PAH_URL}${REMOTE_HREF}" | jq -r '.task // empty')
+    wait_for_task "$TASK" "delete-remote-${REPO_NAME}"
+  fi
+
+  echo "  ${REPO_NAME} removed" >> /tmp/progress.log
+done
+
+echo "Synced repos cleanup complete" >> /tmp/progress.log
+
 # --- Check if signing service already exists, configure if not ---
 
 SIGNING_SVC=$(curl -sk -u ${PAH_USER}:${PAH_PASS} \
