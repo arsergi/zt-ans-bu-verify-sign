@@ -99,10 +99,13 @@ else
   echo "Signing service '${SIGNING_SVC}' already exists" >> /tmp/progress.log
 fi
 
-# --- Configure Galaxy NG to auto-sign collections on approval ---
-# Settings are on the container overlay (not a persistent volume), so they
-# must be applied to running containers without restart. The entrypoint
+# --- Configure Galaxy NG signing settings and reload API ---
+# Settings are on the container overlay (not persistent). The entrypoint
 # regenerates settings.py on container start, so restarts wipe our changes.
+# After appending, we HUP the API container's gunicorn master (PID 1) to
+# make it re-read settings.py. Worker containers can't be reloaded (PID 1
+# IS the worker), so auto-sign on approval won't work — the module-07
+# solve uses an explicit sign API call instead.
 
 cat > /tmp/galaxy_signing_settings.py <<'SETTINGSEOF'
 GALAXY_COLLECTION_SIGNING_SERVICE = "ansible-default"
@@ -110,44 +113,27 @@ GALAXY_AUTO_SIGN_COLLECTIONS = True
 SETTINGSEOF
 
 for CONTAINER in automation-hub-api automation-hub-worker-1 automation-hub-worker-2; do
-  if su - rhel -c "podman exec ${CONTAINER} grep -q GALAXY_COLLECTION_SIGNING_SERVICE /etc/pulp/settings.py 2>/dev/null"; then
+  if su - rhel -c "podman exec ${CONTAINER} grep -q '^GALAXY_COLLECTION_SIGNING_SERVICE = \"ansible-default\"' /etc/pulp/settings.py 2>/dev/null"; then
     continue
   fi
   su - rhel -c "podman cp /tmp/galaxy_signing_settings.py ${CONTAINER}:/tmp/galaxy_signing_settings.py"
   su - rhel -c "podman exec -u 0 ${CONTAINER} bash -c 'cat /tmp/galaxy_signing_settings.py >> /etc/pulp/settings.py'"
 done
+rm -f /tmp/galaxy_signing_settings.py
 
 echo "Galaxy NG signing settings applied" >> /tmp/progress.log
 
-# --- Reload container processes to pick up new settings ---
-# Appending to settings.py doesn't affect running processes (Python imported
-# settings at boot). Kill non-PID-1 processes so the master respawns workers
-# with fresh imports. PID 1 is gunicorn/pulpcore-api or pulpcore-worker master.
-
-cat > /tmp/reload_workers.sh <<'RELOADEOF'
-#!/bin/bash
-cd /proc
-for d in [0-9]*; do
-  [ "$d" != "1" ] && kill -TERM "$d" 2>/dev/null
-done
-RELOADEOF
-chmod +x /tmp/reload_workers.sh
-
-echo "Reloading hub container processes..." >> /tmp/progress.log
-for CONTAINER in automation-hub-api automation-hub-worker-1 automation-hub-worker-2; do
-  su - rhel -c "podman cp /tmp/reload_workers.sh ${CONTAINER}:/tmp/reload_workers.sh"
-  su - rhel -c "podman exec ${CONTAINER} /tmp/reload_workers.sh"
-  echo "  reloaded ${CONTAINER}" >> /tmp/progress.log
-done
-rm -f /tmp/reload_workers.sh
-
+# HUP the API container's gunicorn master to reload settings.py.
+# This makes the _ui/v1/settings/ endpoint return the signing service
+# config, which tells the hub frontend to show signing badges.
+su - rhel -c "podman exec automation-hub-api kill -HUP 1"
 sleep 5
 
 SIGNING_SETTING=$(curl -sk -u ${PAH_USER}:${PAH_PASS} \
   ${PAH_URL}/api/galaxy/_ui/v1/settings/ | jq -r '.GALAXY_COLLECTION_SIGNING_SERVICE // empty')
 echo "  GALAXY_COLLECTION_SIGNING_SERVICE=${SIGNING_SETTING}" >> /tmp/progress.log
 if [ "$SIGNING_SETTING" != "ansible-default" ]; then
-  echo "  WARNING: Signing settings not loaded by API" >> /tmp/progress.log
+  echo "  WARNING: Signing settings not loaded by API — hub UI won't show signing badges" >> /tmp/progress.log
 fi
 
 # --- Export the signing service public key ---
