@@ -1,6 +1,5 @@
-#!/bin/sh
+#!/bin/bash
 echo "Starting module called module-06" >> /tmp/progress.log
-sudo -u rhel bash -c : && RUNAS="sudo -u rhel"
 
 PAH_URL="https://localhost"
 PAH_USER="admin"
@@ -50,7 +49,11 @@ GPGEOF
   su - rhel -c "podman exec automation-hub-worker-1 bash -c 'mkdir -p ${CONTAINER_GNUPGHOME} && chmod 700 ${CONTAINER_GNUPGHOME} && GNUPGHOME=${CONTAINER_GNUPGHOME} gpg --no-tty --batch --gen-key /tmp/pah_gpg.txt'"
 
   KEY_FP=$(su - rhel -c "podman exec automation-hub-worker-1 bash -c 'GNUPGHOME=${CONTAINER_GNUPGHOME} gpg --no-tty --list-keys --with-colons \"PAH Signing Service\"'" | awk -F: '/^fpr:/{print $10; exit}')
-  echo "GPG key generated inside container with fingerprint ${KEY_FP}" >> /tmp/progress.log
+  echo "GPG key fingerprint: ${KEY_FP}" >> /tmp/progress.log
+  if [ -z "$KEY_FP" ]; then
+    echo "ERROR: GPG key generation failed — empty fingerprint" >> /tmp/progress.log
+    su - rhel -c "podman exec automation-hub-worker-1 bash -c 'GNUPGHOME=${CONTAINER_GNUPGHOME} gpg --no-tty --list-keys'" >> /tmp/progress.log 2>&1
+  fi
 
   # Replicate GPG key to worker-2 in case /var/lib/pulp is not a shared volume
   su - rhel -c "podman exec automation-hub-worker-1 bash -c 'GNUPGHOME=${CONTAINER_GNUPGHOME} gpg --no-tty --batch --yes --armor --export-secret-keys \"PAH Signing Service\"'" > /tmp/pah_signing_private.key
@@ -79,9 +82,19 @@ SIGNEOF
   done
 
   # Register via pulpcore-manager (validates script + key, more reliable than REST API)
-  su - rhel -c "podman exec automation-hub-worker-1 bash -c 'GNUPGHOME=${CONTAINER_GNUPGHOME} pulpcore-manager add-signing-service ansible-default /var/lib/pulp/scripts/collection_sign.sh ${KEY_FP}'"
+  echo "Registering signing service with pulpcore-manager..." >> /tmp/progress.log
+  REGISTER_OUTPUT=$(su - rhel -c "podman exec automation-hub-worker-1 bash -c 'GNUPGHOME=${CONTAINER_GNUPGHOME} pulpcore-manager add-signing-service ansible-default /var/lib/pulp/scripts/collection_sign.sh ${KEY_FP}'" 2>&1)
+  REGISTER_EXIT=$?
+  echo "  pulpcore-manager exit code: ${REGISTER_EXIT}" >> /tmp/progress.log
+  echo "  pulpcore-manager output: ${REGISTER_OUTPUT}" >> /tmp/progress.log
 
-  echo "Signing service registered" >> /tmp/progress.log
+  # Verify registration via API
+  VERIFY_SS=$(curl -sk -u ${PAH_USER}:${PAH_PASS} \
+    ${PAH_URL}/api/galaxy/pulp/api/v3/signing-services/?name=ansible-default | jq -r '.results[0].name // empty')
+  echo "  signing service API check: ${VERIFY_SS}" >> /tmp/progress.log
+  if [ -z "$VERIFY_SS" ]; then
+    echo "ERROR: Signing service not found after registration" >> /tmp/progress.log
+  fi
 else
   echo "Signing service '${SIGNING_SVC}' already exists" >> /tmp/progress.log
 fi
@@ -105,6 +118,37 @@ for CONTAINER in automation-hub-api automation-hub-worker-1 automation-hub-worke
 done
 
 echo "Galaxy NG signing settings applied" >> /tmp/progress.log
+
+# --- Reload container processes to pick up new settings ---
+# Appending to settings.py doesn't affect running processes (Python imported
+# settings at boot). Kill non-PID-1 processes so the master respawns workers
+# with fresh imports. PID 1 is gunicorn/pulpcore-api or pulpcore-worker master.
+
+cat > /tmp/reload_workers.sh <<'RELOADEOF'
+#!/bin/bash
+cd /proc
+for d in [0-9]*; do
+  [ "$d" != "1" ] && kill -TERM "$d" 2>/dev/null
+done
+RELOADEOF
+chmod +x /tmp/reload_workers.sh
+
+echo "Reloading hub container processes..." >> /tmp/progress.log
+for CONTAINER in automation-hub-api automation-hub-worker-1 automation-hub-worker-2; do
+  su - rhel -c "podman cp /tmp/reload_workers.sh ${CONTAINER}:/tmp/reload_workers.sh"
+  su - rhel -c "podman exec ${CONTAINER} /tmp/reload_workers.sh"
+  echo "  reloaded ${CONTAINER}" >> /tmp/progress.log
+done
+rm -f /tmp/reload_workers.sh
+
+sleep 5
+
+SIGNING_SETTING=$(curl -sk -u ${PAH_USER}:${PAH_PASS} \
+  ${PAH_URL}/api/galaxy/_ui/v1/settings/ | jq -r '.GALAXY_COLLECTION_SIGNING_SERVICE // empty')
+echo "  GALAXY_COLLECTION_SIGNING_SERVICE=${SIGNING_SETTING}" >> /tmp/progress.log
+if [ "$SIGNING_SETTING" != "ansible-default" ]; then
+  echo "  WARNING: Signing settings not loaded by API" >> /tmp/progress.log
+fi
 
 # --- Export the signing service public key ---
 
