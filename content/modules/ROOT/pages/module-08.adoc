@@ -135,14 +135,11 @@ The verification process:
 * You installed a collection *with* verification and confirmed the signature was valid.
 * You tampered with an installed collection and used `ansible-galaxy collection verify` to detect the modification.
 
-== Conclusion
+== Next Steps
 
-This lab has covered both sides of Ansible content signing in Ansible Automation Platform:
+This concludes the collection verification section of the lab. In the next module, you will tie everything together by configuring Automation Controller to pull signed collections from Private Automation Hub and execute a playbook that uses them -- proving the full trust chain from developer to production.
 
-* **Project signing** (Modules 2-5): You used `ansible-sign` to sign Ansible projects locally with your own GPG key. Automation controller validated those signatures when syncing projects from source control.
-* **Collection signing** (Modules 6-8): You published collections to Private Automation Hub, which signed them server-side using its own signing service. You then verified those signatures on the client side using `ansible-galaxy` with a GPG keyring.
-
-Together, these mechanisms provide end-to-end content integrity for Ansible automation -- from the projects that define your automation workflows to the reusable collections they depend on.
+Press the **Next** button below to continue.
 
 == Troubleshooting
 

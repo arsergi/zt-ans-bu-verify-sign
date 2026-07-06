@@ -28,6 +28,9 @@ antora:
     - name: module-08
       label: "Install and verify signed collections with GPG verification"
       solveButton: true
+    - name: module-09
+      label: "Run signed collections from Automation Controller"
+      solveButton: true
 
 tabs:
 

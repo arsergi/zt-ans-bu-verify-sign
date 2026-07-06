@@ -6,3 +6,4 @@
 * xref:module-06.adoc[Publish Ansible collections to Private Automation Hub]
 * xref:module-07.adoc[Sign and approve collections in Private Automation Hub]
 * xref:module-08.adoc[Install and verify signed collections with GPG verification]
+* xref:module-09.adoc[Run signed collections from Automation Controller]

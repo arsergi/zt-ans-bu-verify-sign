@@ -270,6 +270,45 @@ cat > ${COLLECTIONS_DIR}/ansible/test_collection/meta/runtime.yml <<RTEOF
 requires_ansible: ">=2.15.0"
 RTEOF
 
+mkdir -p ${COLLECTIONS_DIR}/ansible/test_collection/plugins/modules
+cat > ${COLLECTIONS_DIR}/ansible/test_collection/plugins/modules/hello_world.py <<'MODEOF'
+#!/usr/bin/python
+from ansible.module_utils.basic import AnsibleModule
+
+DOCUMENTATION = r'''
+module: hello_world
+short_description: A simple hello world module
+description: Returns a greeting message to demonstrate signed collection usage.
+options:
+  name:
+    description: Name to greet
+    type: str
+    default: World
+author: Lab Student
+'''
+
+EXAMPLES = r'''
+- name: Say hello
+  ansible.test_collection.hello_world:
+    name: "Ansible"
+'''
+
+RETURN = r'''
+msg:
+  description: The greeting message
+  type: str
+  returned: always
+'''
+
+def main():
+    module = AnsibleModule(argument_spec=dict(name=dict(type='str', default='World')))
+    name = module.params['name']
+    module.exit_json(changed=False, msg="Hello, {0}! This module is from the signed ansible.test_collection.".format(name))
+
+if __name__ == '__main__':
+    main()
+MODEOF
+
 ansible-galaxy collection init community.lab_collection --init-path ${COLLECTIONS_DIR}
 cat > ${COLLECTIONS_DIR}/community/lab_collection/galaxy.yml <<GALEOF
 namespace: community
