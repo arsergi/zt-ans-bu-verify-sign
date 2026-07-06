@@ -30,7 +30,7 @@ echo "  exit code: $?" >> $LOG
 
 # --- Step 5: Verify (shows tampering) ---
 echo "[5/5] Verifying collection integrity (should report tampering)..." >> $LOG
-su - rhel -c "ansible-galaxy collection verify community.lab_collection --keyring ~/keyring.kbx -c" >> $LOG 2>&1 || true
+su - rhel -c "cd ~ && ansible-galaxy collection verify community.lab_collection --keyring ~/keyring.kbx -c --server published_repo" >> $LOG 2>&1 || true
 echo "  exit code: $?" >> $LOG
 
 echo "=== Module 08 solve finished: $(date) ===" >> $LOG

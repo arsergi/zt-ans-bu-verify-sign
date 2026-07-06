@@ -109,7 +109,8 @@ Now run `ansible-galaxy collection verify` to compare the local installation aga
 
 [source,bash]
 ----
-ansible-galaxy collection verify community.lab_collection --keyring ~/keyring.kbx -c -s $(grep url ~/ansible.cfg | tail -1 | cut -d= -f2)
+cd ~
+ansible-galaxy collection verify community.lab_collection --keyring ~/keyring.kbx -c --server published_repo
 ----
 
 The output will report the tampered file:
