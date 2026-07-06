@@ -47,27 +47,17 @@ Fill out the form with these details:
 | Name | `Automation Hub`
 | Organization | `Default`
 | Credential Type | `Ansible Galaxy/Automation Hub API Token`
-| Galaxy Server URL | `\https://localhost/api/galaxy/content/published/`
+| Galaxy Server URL | `\https://automation-gateway-proxy/api/galaxy/content/published/`
 | API Token | Paste the token you copied from the terminal
 |===
 
 Click **Create Credential**.
 
----
-
-== Task 2: Associate the Credential with the Default Organization
-
-Creating the credential is not enough -- Controller needs to know which organizations should use it when pulling collections from the hub.
-
-Navigate to **Automation Execution** -> **Infrastructure** -> **Organizations** and click on **Default**.
-
-Look for the **Galaxy Credentials** section. Add the **Automation Hub** credential you just created, then click **Save**.
-
-This tells Controller to use this credential whenever it needs to install collections for projects in the Default organization.
+Next, you need to associate this credential with the Default organization so Controller knows to use it when pulling collections. Navigate to **Automation Execution** -> **Infrastructure** -> **Organizations** and click on **Default**. Under the **Galaxy Credentials** section, add the **Automation Hub** credential you just created, then click **Save**.
 
 ---
 
-== Task 3: Sync the Signed Project
+== Task 2: Sync the Signed Project
 
 The module setup has already added a new playbook and a `collections/requirements.yml` file to the `ansible-sign-demo` repository and re-signed the project. Now Controller needs to sync the updated project to pick up these changes.
 
@@ -107,7 +97,7 @@ ok: [localhost]
 
 ---
 
-== Task 4: Create an Inventory
+== Task 3: Create an Inventory
 
 A Job Template needs an inventory to run against. Create a simple one with `localhost` as the only host.
 
@@ -134,7 +124,7 @@ Click **Create Host**.
 
 ---
 
-== Task 5: Create a Job Template
+== Task 4: Create a Job Template
 
 Navigate to **Automation Execution** -> **Templates** and click **Create template** -> **Create job template**.
 
@@ -151,7 +141,7 @@ Click **Create job template**.
 
 ---
 
-== Task 6: Launch the Job
+== Task 5: Launch the Job
 
 Click the **Launch** button on the job template. This will:
 

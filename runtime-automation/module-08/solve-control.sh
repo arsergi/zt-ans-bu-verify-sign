@@ -15,12 +15,12 @@ fi
 
 # --- Step 2: Install collection without verification ---
 echo "[2/5] Installing ansible.test_collection (no verification)..." >> $LOG
-su - rhel -c "ansible-galaxy collection install ansible.test_collection -c -p ~/.ansible/collections/" >> $LOG 2>&1
+su - rhel -c "cd ~ && ansible-galaxy collection install ansible.test_collection -c --server published_repo" >> $LOG 2>&1
 echo "  exit code: $?" >> $LOG
 
 # --- Step 3: Install collection with verification ---
 echo "[3/5] Installing community.lab_collection (with keyring verification)..." >> $LOG
-su - rhel -c "ansible-galaxy collection install community.lab_collection --keyring ~/keyring.kbx -c -p ~/.ansible/collections/ -vvvv" >> $LOG 2>&1
+su - rhel -c "cd ~ && ansible-galaxy collection install community.lab_collection --keyring ~/keyring.kbx -c --server published_repo -vvvv" >> $LOG 2>&1
 echo "  exit code: $?" >> $LOG
 
 # --- Step 4: Tamper with the collection ---

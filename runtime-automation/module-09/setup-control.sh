@@ -73,8 +73,15 @@ cat > /home/rhel/ansible-sign-demo/collections/requirements.yml <<'REQEOF'
 ---
 collections:
   - name: ansible.test_collection
-    source: https://localhost/api/galaxy/content/published/
 REQEOF
+
+# --- Tell Controller to skip SSL verification for Galaxy servers ---
+# The Galaxy credential uses the internal container hostname (automation-gateway-proxy)
+# whose cert won't match, so Controller needs to ignore SSL for Galaxy connections.
+curl -sk -u ${PAH_USER}:${PAH_PASS} \
+  -H "Content-Type: application/json" \
+  -X PATCH "https://localhost/api/controller/v2/settings/jobs/" \
+  -d '{"GALAXY_IGNORE_CERTS": true}' >> /tmp/progress.log 2>&1
 
 # --- Update MANIFEST.in to include collections directory ---
 if ! grep -q 'recursive-include collections' /home/rhel/ansible-sign-demo/MANIFEST.in 2>/dev/null; then

@@ -55,7 +55,7 @@ else
     --arg name "Automation Hub" \
     --argjson cred_type "$GALAXY_CRED_TYPE_ID" \
     --argjson org "$ORG_ID" \
-    --arg url "${AAP_URL}/api/galaxy/content/published/" \
+    --arg url "https://automation-gateway-proxy/api/galaxy/content/published/" \
     --arg token "$TOKEN" \
     '{
       name: $name,
