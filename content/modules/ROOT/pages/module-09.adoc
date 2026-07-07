@@ -47,13 +47,13 @@ Fill out the form with these details:
 | Name | `Automation Hub`
 | Organization | `Default`
 | Credential Type | `Ansible Galaxy/Automation Hub API Token`
-| Galaxy Server URL | `\https://automation-gateway-proxy/api/galaxy/content/published/`
+| Galaxy Server URL | `\https://host.containers.internal/api/galaxy/content/published/`
 | API Token | Paste the token you copied from the terminal
 |===
 
 Click **Create Credential**.
 
-Next, you need to associate this credential with the Default organization so Controller knows to use it when pulling collections. Navigate to **Automation Execution** -> **Infrastructure** -> **Organizations** and click on **Default**. Under the **Galaxy Credentials** section, add the **Automation Hub** credential you just created, then click **Save**.
+Next, you need to associate this credential with the Default organization so Controller knows to use it when pulling collections. Navigate to **Access Management** ->  **Organizations** and click on **Default**. Select **Edit organization** and under the **Galaxy Credentials** section, add the **Automation Hub** credential you just created, then click **Next**. Then, drag **Automation Hub** credential to the top of the list and click **Next** again. Finally, click **Finish** to apply the changes.
 
 ---
 
