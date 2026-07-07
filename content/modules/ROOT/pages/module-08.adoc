@@ -34,7 +34,14 @@ KEY_FP=$(gpg --no-default-keyring --keyring ~/keyring.kbx --with-colons --list-k
 echo "${KEY_FP}:6:" | gpg --no-default-keyring --keyring ~/keyring.kbx --import-ownertrust
 ----
 
-You can verify the key was imported and trusted:
+Because GPG's trust database is shared across keyrings, also add any existing keys from your default keyring to avoid validation conflicts:
+
+[source,bash]
+----
+gpg --export --armor | gpg --no-default-keyring --keyring ~/keyring.kbx --import
+----
+
+You can verify the keys were imported and trusted:
 
 [source,bash]
 ----

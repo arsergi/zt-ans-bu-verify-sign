@@ -13,6 +13,9 @@ if [ -n "$KEY_FP" ]; then
   echo "  trust set for ${KEY_FP}" >> $LOG
 fi
 
+# Import keys from default keyring so GPG trustdb stays consistent (prevents exit code 2)
+su - rhel -c "gpg --export --armor 2>/dev/null | gpg --no-default-keyring --keyring ~/keyring.kbx --import 2>/dev/null" >> $LOG 2>&1 || true
+
 # --- Step 2: Install collection without verification ---
 echo "[2/5] Installing ansible.test_collection (no verification)..." >> $LOG
 su - rhel -c "cd ~ && ansible-galaxy collection install ansible.test_collection -c" >> $LOG 2>&1
