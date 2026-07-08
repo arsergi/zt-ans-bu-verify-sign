@@ -26,7 +26,7 @@ cat ~/ansible-sign-demo/playbooks/use_signed_collection.yml
 
 [source,bash]
 ----
-ls ~/ansible-sign-demo/collections/ansible_collections/ansible/test_collection/
+ls ~/ansible-sign-demo/playbooks/collections/ansible_collections/ansible/test_collection/
 ----
 
 Now go to the `Automation-Controller` tab and log in if needed.

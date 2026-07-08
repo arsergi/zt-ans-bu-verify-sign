@@ -68,12 +68,12 @@ cat > /home/rhel/ansible-sign-demo/playbooks/use_signed_collection.yml <<'PBEOF'
 PBEOF
 
 # --- Install signed collection directly into the project ---
-su - rhel -c "cd ~ && ansible-galaxy collection install ansible.test_collection -c -p ~/ansible-sign-demo/collections/" >> /tmp/progress.log 2>&1
+su - rhel -c "cd ~ && ansible-galaxy collection install ansible.test_collection -c -p ~/ansible-sign-demo/playbooks/collections/" >> /tmp/progress.log 2>&1
 echo "  collection install exit code: $?" >> /tmp/progress.log
 
 # --- Update MANIFEST.in to include collections directory ---
-if ! grep -q 'recursive-include collections' /home/rhel/ansible-sign-demo/MANIFEST.in 2>/dev/null; then
-  echo "recursive-include collections *" >> /home/rhel/ansible-sign-demo/MANIFEST.in
+if ! grep -q 'recursive-include playbooks/collections' /home/rhel/ansible-sign-demo/MANIFEST.in 2>/dev/null; then
+  echo "recursive-include playbooks/collections *" >> /home/rhel/ansible-sign-demo/MANIFEST.in
 fi
 
 # --- Fix ownership before signing ---
