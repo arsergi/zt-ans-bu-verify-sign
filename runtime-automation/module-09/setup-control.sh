@@ -67,25 +67,13 @@ cat > /home/rhel/ansible-sign-demo/playbooks/use_signed_collection.yml <<'PBEOF'
         var: result.msg
 PBEOF
 
-# --- Create collections/requirements.yml for Controller auto-install ---
-mkdir -p /home/rhel/ansible-sign-demo/collections
-cat > /home/rhel/ansible-sign-demo/collections/requirements.yml <<'REQEOF'
----
-collections:
-  - name: ansible.test_collection
-REQEOF
-
-# --- Tell Controller to skip SSL verification for Galaxy servers ---
-# The Galaxy credential uses the internal container hostname (automation-gateway-proxy)
-# whose cert won't match, so Controller needs to ignore SSL for Galaxy connections.
-curl -sk -u ${PAH_USER}:${PAH_PASS} \
-  -H "Content-Type: application/json" \
-  -X PATCH "https://localhost/api/controller/v2/settings/jobs/" \
-  -d '{"GALAXY_IGNORE_CERTS": true}' >> /tmp/progress.log 2>&1
+# --- Install signed collection directly into the project ---
+su - rhel -c "cd ~/ansible-sign-demo && ansible-galaxy collection install ansible.test_collection -c -p collections/" >> /tmp/progress.log 2>&1
+echo "  collection install exit code: $?" >> /tmp/progress.log
 
 # --- Update MANIFEST.in to include collections directory ---
 if ! grep -q 'recursive-include collections' /home/rhel/ansible-sign-demo/MANIFEST.in 2>/dev/null; then
-  echo "recursive-include collections *.yml" >> /home/rhel/ansible-sign-demo/MANIFEST.in
+  echo "recursive-include collections *" >> /home/rhel/ansible-sign-demo/MANIFEST.in
 fi
 
 # --- Fix ownership before signing ---

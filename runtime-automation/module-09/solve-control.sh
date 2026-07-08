@@ -8,7 +8,7 @@ AAP_PASS="ansible123!"
 CURL_OPTS="-sk --connect-timeout 10 --max-time 30"
 
 # --- Step 1: Look up Default org ---
-echo "[1/8] Looking up Default organization..." >> $LOG
+echo "[1/5] Looking up Default organization..." >> $LOG
 ORG_ID=$(curl $CURL_OPTS -u ${AAP_USER}:${AAP_PASS} \
   "${AAP_URL}/api/controller/v2/organizations/?name=Default" \
   | jq -r '.results[0].id')
@@ -20,78 +20,8 @@ if [ "$ORG_ID" = "null" ] || [ -z "$ORG_ID" ]; then
   exit 1
 fi
 
-# --- Step 2: Look up Galaxy credential type and create credential ---
-echo "[2/8] Creating Galaxy credential..." >> $LOG
-
-echo "  Looking up Galaxy credential type (kind=galaxy)..." >> $LOG
-GALAXY_CRED_TYPE_ID=$(curl $CURL_OPTS -u ${AAP_USER}:${AAP_PASS} \
-  "${AAP_URL}/api/controller/v2/credential_types/?kind=galaxy" \
-  | jq -r '.results[0].id')
-echo "  Galaxy credential type ID: ${GALAXY_CRED_TYPE_ID}" >> $LOG
-
-if [ "$GALAXY_CRED_TYPE_ID" = "null" ] || [ -z "$GALAXY_CRED_TYPE_ID" ]; then
-  echo "  ERROR: Could not find Galaxy credential type" >> $LOG
-  echo "=== Module 09 solve FAILED: $(date) ===" >> $LOG
-  exit 1
-fi
-
-EXISTING_CRED_ID=$(curl $CURL_OPTS -u ${AAP_USER}:${AAP_PASS} \
-  "${AAP_URL}/api/controller/v2/credentials/?name=Automation+Hub" \
-  | jq -r '.results[0].id // empty')
-
-if [ -n "$EXISTING_CRED_ID" ] && [ "$EXISTING_CRED_ID" != "null" ]; then
-  echo "  Galaxy credential already exists (ID: ${EXISTING_CRED_ID}), skipping creation" >> $LOG
-  CRED_ID=$EXISTING_CRED_ID
-else
-  TOKEN=$(grep '^token=' /home/rhel/ansible.cfg | head -1 | cut -d= -f2)
-  if [ -z "$TOKEN" ]; then
-    echo "  Token not found in ansible.cfg, generating new one..." >> $LOG
-    TOKEN=$(curl -sk -u ${AAP_USER}:${AAP_PASS} \
-      -X POST ${AAP_URL}/api/galaxy/v3/auth/token/ | jq -r '.token // empty')
-  fi
-  echo "  API token: ${TOKEN:0:8}..." >> $LOG
-
-  CRED_PAYLOAD=$(jq -n \
-    --arg name "Automation Hub" \
-    --argjson cred_type "$GALAXY_CRED_TYPE_ID" \
-    --argjson org "$ORG_ID" \
-    --arg url "https://host.containers.internal/api/galaxy/content/published/" \
-    --arg token "$TOKEN" \
-    '{
-      name: $name,
-      credential_type: $cred_type,
-      organization: $org,
-      inputs: { url: $url, token: $token }
-    }')
-
-  echo "  POSTing Galaxy credential..." >> $LOG
-  CRED_RESPONSE=$(curl $CURL_OPTS -u ${AAP_USER}:${AAP_PASS} \
-    -H "Content-Type: application/json" \
-    -X POST "${AAP_URL}/api/controller/v2/credentials/" \
-    -d "$CRED_PAYLOAD")
-  echo "  credential response: $CRED_RESPONSE" >> $LOG
-
-  CRED_ID=$(echo "$CRED_RESPONSE" | jq -r '.id')
-  echo "  credential ID: ${CRED_ID}" >> $LOG
-
-  if [ "$CRED_ID" = "null" ] || [ -z "$CRED_ID" ]; then
-    echo "  ERROR: Failed to create Galaxy credential" >> $LOG
-    echo "=== Module 09 solve FAILED: $(date) ===" >> $LOG
-    exit 1
-  fi
-fi
-
-# --- Step 3: Associate Galaxy credential with Default org ---
-echo "[3/8] Associating credential with Default organization..." >> $LOG
-ASSOC_RESPONSE=$(curl $CURL_OPTS -u ${AAP_USER}:${AAP_PASS} \
-  -H "Content-Type: application/json" \
-  -X POST "${AAP_URL}/api/controller/v2/organizations/${ORG_ID}/galaxy_credentials/" \
-  -d "{\"id\": ${CRED_ID}}")
-echo "  association response: $ASSOC_RESPONSE" >> $LOG
-echo "  completed: $(date)" >> $LOG
-
-# --- Step 4: Sync the Signed Project ---
-echo "[4/8] Syncing Signed Project..." >> $LOG
+# --- Step 2: Sync the Signed Project ---
+echo "[2/5] Syncing Signed Project..." >> $LOG
 
 PROJECT_ID=$(curl $CURL_OPTS -u ${AAP_USER}:${AAP_PASS} \
   "${AAP_URL}/api/controller/v2/projects/?name=Signed+Project" \
@@ -107,7 +37,6 @@ fi
 curl $CURL_OPTS -u ${AAP_USER}:${AAP_PASS} \
   -X POST "${AAP_URL}/api/controller/v2/projects/${PROJECT_ID}/update/" >> $LOG 2>&1
 
-# Brief pause so Controller registers the new sync job before we poll
 sleep 5
 
 echo "  Waiting for project sync..." >> $LOG
@@ -127,8 +56,8 @@ for i in $(seq 1 60); do
 done
 echo "  completed: $(date)" >> $LOG
 
-# --- Step 5: Create inventory ---
-echo "[5/8] Creating inventory..." >> $LOG
+# --- Step 3: Create inventory ---
+echo "[3/5] Creating inventory..." >> $LOG
 
 EXISTING_INV_ID=$(curl $CURL_OPTS -u ${AAP_USER}:${AAP_PASS} \
   "${AAP_URL}/api/controller/v2/inventories/?name=Module+09+Inventory" \
@@ -155,9 +84,8 @@ else
   INVENTORY_ID=$(echo "$INV_RESPONSE" | jq -r '.id')
   echo "  inventory ID: ${INVENTORY_ID}" >> $LOG
 
-  # --- Step 6: Add localhost to inventory ---
-  echo "[6/8] Adding localhost to inventory..." >> $LOG
-
+  # Add localhost to inventory
+  echo "  Adding localhost to inventory..." >> $LOG
   HOST_RESPONSE=$(curl $CURL_OPTS -u ${AAP_USER}:${AAP_PASS} \
     -H "Content-Type: application/json" \
     -X POST "${AAP_URL}/api/controller/v2/hosts/" \
@@ -166,8 +94,8 @@ else
   echo "  completed: $(date)" >> $LOG
 fi
 
-# --- Step 7: Create job template ---
-echo "[7/8] Creating job template..." >> $LOG
+# --- Step 4: Create job template ---
+echo "[4/5] Creating job template..." >> $LOG
 
 EXISTING_JT_ID=$(curl $CURL_OPTS -u ${AAP_USER}:${AAP_PASS} \
   "${AAP_URL}/api/controller/v2/job_templates/?name=Signed+Collection+Demo" \
@@ -205,8 +133,8 @@ else
   fi
 fi
 
-# --- Step 8: Launch the job ---
-echo "[8/8] Launching job..." >> $LOG
+# --- Step 5: Launch the job ---
+echo "[5/5] Launching job..." >> $LOG
 
 LAUNCH_RESPONSE=$(curl $CURL_OPTS -u ${AAP_USER}:${AAP_PASS} \
   -X POST "${AAP_URL}/api/controller/v2/job_templates/${JT_ID}/launch/")
