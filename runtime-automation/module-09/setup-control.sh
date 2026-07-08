@@ -68,7 +68,7 @@ cat > /home/rhel/ansible-sign-demo/playbooks/use_signed_collection.yml <<'PBEOF'
 PBEOF
 
 # --- Install signed collection directly into the project ---
-su - rhel -c "cd ~/ansible-sign-demo && ansible-galaxy collection install ansible.test_collection -c -p collections/" >> /tmp/progress.log 2>&1
+su - rhel -c "cd ~ && ansible-galaxy collection install ansible.test_collection -c -p ~/ansible-sign-demo/collections/" >> /tmp/progress.log 2>&1
 echo "  collection install exit code: $?" >> /tmp/progress.log
 
 # --- Update MANIFEST.in to include collections directory ---
